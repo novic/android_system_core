@@ -107,6 +107,7 @@ on init
     write /proc/sys/kernel/sched_child_runs_first 0
 
     write /proc/sys/kernel/randomize_va_space 2
+    write /proc/sys/kernel/dmesg_restrict 1
     write /proc/sys/kernel/kptr_restrict 2
     write /proc/sys/vm/mmap_min_addr 32768
     write /proc/sys/net/ipv4/ping_group_range "0 2147483647"
@@ -124,6 +125,21 @@ on init
     # disable icmp redirects
     write /proc/sys/net/ipv4/conf/all/accept_redirects 0
     write /proc/sys/net/ipv6/conf/all/accept_redirects 0
+
+    # IPv4 hardening
+    #
+    # reverse path filtering is done with netfilter for consistency with IPv6
+    write /proc/sys/net/ipv4/tcp_rfc1337 1
+    write /proc/sys/net/ipv4/conf/all/accept_source_route 0
+    write /proc/sys/net/ipv4/conf/default/accept_source_route 0
+    write /proc/sys/net/ipv4/conf/default/accept_redirects 0
+    write /proc/sys/net/ipv4/conf/all/send_redirects 0
+    write /proc/sys/net/ipv4/conf/default/send_redirects 0
+
+    # IPv6 hardening
+    write /proc/sys/net/ipv6/conf/default/accept_redirects 0
+    write /proc/sys/net/ipv6/conf/all/use_tempaddr 2
+    write /proc/sys/net/ipv6/conf/default/use_tempaddr 2
 
     # Create cgroup mount points for process groups
     mkdir /dev/cpuctl
@@ -434,6 +450,9 @@ on boot
     chown root system /sys/module/lowmemorykiller/parameters/minfree
     chmod 0664 /sys/module/lowmemorykiller/parameters/minfree
 
+    # OpenBSD malloc is quite heavy on VMAs
+    write /proc/sys/vm/max_map_count 262144
+
     # Tweak background writeout
     write /proc/sys/vm/dirty_expire_centisecs 200
     write /proc/sys/vm/dirty_background_ratio  5
@@ -564,6 +583,21 @@ on property:security.perf_harden=0
 
 on property:security.perf_harden=1
     write /proc/sys/kernel/perf_event_paranoid 3
+
+on property:persist.security.deny_new_usb=disabled
+    write /proc/sys/kernel/deny_new_usb 0
+
+on property:persist.security.deny_new_usb=enabled
+    write /proc/sys/kernel/deny_new_usb 1
+
+on property:persist.security.deny_new_usb=dynamic
+    write /proc/sys/kernel/deny_new_usb 1
+
+on property:security.deny_new_usb=*
+    write /proc/sys/kernel/deny_new_usb ${security.deny_new_usb}
+
+on property:persist.privacy.randomize_mac=*
+    write /proc/sys/net/core/randomize_mac ${persist.privacy.randomize_mac}
 
 ## Daemon processes to be run by init.
 ##

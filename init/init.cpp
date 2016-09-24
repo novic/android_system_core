@@ -142,7 +142,10 @@ int add_environment(const char *key, const char *val)
         /* Add entry if a free slot is available */
         if (ENV[n] == NULL) {
             char* entry;
-            asprintf(&entry, "%s=%s", key, val);
+            if (asprintf(&entry, "%s=%s", key, val) == -1) {
+                ERROR("out of memory\n");
+                return -1;
+            }
             ENV[n] = entry;
             return 0;
         }
@@ -463,7 +466,7 @@ void property_changed(const char *name, const char *value)
 
 static void restart_service_if_needed(struct service *svc)
 {
-    time_t next_start_time = svc->time_started + 5;
+    time_t next_start_time = svc->time_started + 10;
 
     if (next_start_time <= gettime()) {
         svc->flags &= (~SVC_RESTARTING);
@@ -724,6 +727,7 @@ ret:
     if (urandom_fd != -1) {
         close(urandom_fd);
     }
+    //explicit_memset(buf, 0, sizeof(buf));
     return result;
 }
 
@@ -1042,9 +1046,9 @@ int main(int argc, char** argv) {
         mount("tmpfs", "/dev", "tmpfs", MS_NOSUID, "mode=0755");
         mkdir("/dev/pts", 0755);
         mkdir("/dev/socket", 0755);
-        mount("devpts", "/dev/pts", "devpts", 0, NULL);
-        mount("proc", "/proc", "proc", 0, NULL);
-        mount("sysfs", "/sys", "sysfs", 0, NULL);
+        mount("devpts", "/dev/pts", "devpts", MS_NOSUID|MS_NOEXEC, NULL);
+        mount("proc", "/proc", "proc", MS_NOSUID|MS_NODEV|MS_NOEXEC, NULL);
+        mount("sysfs", "/sys", "sysfs", MS_NOSUID|MS_NODEV|MS_NOEXEC, NULL);
     }
 
     // We must have some place other than / to create the device nodes for
